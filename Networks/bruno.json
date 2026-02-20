@@ -5,5 +5,21 @@
   "ignore": [
     "node_modules",
     ".git"
-  ]
+  ],
+  "size": 0,
+  "filesCount": 0,
+  "proxy": {
+    "inherit": false,
+    "config": {
+      "protocol": "http",
+      "hostname": "127.0.0.1",
+      "port": 8080,
+      "auth": {
+        "username": "",
+        "password": "",
+        "disabled": true
+      },
+      "bypassProxy": ""
+    }
+  }
 }

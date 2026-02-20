@@ -96,12 +96,18 @@ export class ProxyServer {
       }
 
       // Forward Request
+      const forwardedHeaders = { ...clientReq.headers };
+      // Hop-by-hop header used by some clients when talking to a proxy.
+      // Do not forward it to origin servers.
+      delete (forwardedHeaders as any)["proxy-connection"];
+      delete (forwardedHeaders as any)["Proxy-Connection"];
+
       const options: http.RequestOptions = {
         hostname,
         port,
         path,
         method: clientReq.method,
-        headers: clientReq.headers,
+        headers: forwardedHeaders,
       };
 
       const proxyReq = http.request(options, (proxyRes) => {
@@ -131,20 +137,30 @@ export class ProxyServer {
             Date.now() - startTime,
           );
         });
-
-        proxyReq.on("error", (e) => {
-          this.consoleManager.logError(
-            `Proxy error to ${hostname}: ${e.message}`,
-          );
-          if (!clientRes.headersSent) {
-            clientRes.statusCode = 502;
-            clientRes.end("Bade Gateway");
-          }
-        });
-
-        // Forward body data if any
-        clientReq.pipe(proxyReq);
       });
+
+      proxyReq.on("error", (e) => {
+        this.consoleManager.logError(
+          `Proxy error to ${hostname}: ${e.message}`,
+        );
+        if (!clientRes.headersSent) {
+          clientRes.statusCode = 502;
+          clientRes.end("Bad Gateway");
+        } else {
+          clientRes.end();
+        }
+      });
+
+      clientReq.on("aborted", () => {
+        proxyReq.destroy();
+      });
+
+      clientReq.on("error", () => {
+        proxyReq.destroy();
+      });
+
+      // Forward body data (or end immediately for GET/HEAD)
+      clientReq.pipe(proxyReq);
     } catch (err: any) {
       this.consoleManager.logError(`Internal Proxy Error: ${err.message}`);
       if (!clientRes.headersSent) {

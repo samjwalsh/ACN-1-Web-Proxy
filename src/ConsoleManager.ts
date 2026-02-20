@@ -21,10 +21,12 @@ export class ConsoleManager implements ConsoleInterface {
     this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
-      prompt: "Proxy >_",
+      prompt: "Proxy >_ ",
     });
 
     this.setupListeners();
+
+    this.printHelp();
   }
 
   private setupListeners() {
@@ -43,6 +45,9 @@ export class ConsoleManager implements ConsoleInterface {
         }
 
         switch (command) {
+          case "help":
+            this.printHelp();
+            break;
           case "block":
             if (args[0]) {
               this.blocklist.add(args[0]);
@@ -60,8 +65,12 @@ export class ConsoleManager implements ConsoleInterface {
             break;
           case "":
             break;
+          case "quit":
+            this.rl.close();
+            break;
           default:
             console.log(`Unknown command: ${command}`);
+            this.printHelp();
             break;
         }
         this.rl.prompt();
@@ -70,6 +79,16 @@ export class ConsoleManager implements ConsoleInterface {
         console.log("Console closed");
         process.exit(0);
       });
+  }
+
+  private printHelp(): void {
+    console.log("Available commands:");
+    console.log("  help               - Show this help message");
+    console.log("  block <domain>     - Add a domain to the blocklist");
+    console.log("  unblock <domain>   - Remove a domain from the blocklist");
+    console.log("  list               - Show blocked domains");
+    console.log("  exit, quit         - Exit the console");
+    if (this.rl) this.rl.prompt(true);
   }
 
   public logRequest(
