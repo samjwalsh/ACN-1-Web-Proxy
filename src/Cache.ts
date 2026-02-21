@@ -15,13 +15,25 @@ export interface CacheInterface {
 
 export class Cache implements CacheInterface {
   private cache: Map<string, CachedResponse>;
+  private ttlMs: number;
 
-  constructor() {
+  constructor(ttlMs: number = 60_000) {
+    // Map is just a hashmap
     this.cache = new Map();
+    this.ttlMs = ttlMs;
   }
 
   public get(url: string): CachedResponse | undefined {
-    return this.cache.get(url);
+    const cached = this.cache.get(url);
+    if (!cached) return undefined;
+
+    // If the cache entry is older than the time to live, delete it
+    if (Date.now() - cached.timestamp > this.ttlMs) {
+      this.cache.delete(url);
+      return undefined;
+    }
+
+    return cached;
   }
 
   public set(url: string, headers: any, body: Buffer): void {
@@ -39,6 +51,7 @@ export class Cache implements CacheInterface {
 
 export class CacheClient implements CacheInterface {
   private rpc: RPCHandler;
+  // Same as above but just uses rpc to access the cache object
 
   constructor(rpc: RPCHandler) {
     this.rpc = rpc;

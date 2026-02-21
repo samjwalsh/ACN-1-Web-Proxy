@@ -37,7 +37,7 @@ export class ProxyServer {
     const startTime = Date.now();
     const reqUrl = clientReq.url ?? "";
 
-    // Parse into different pieces using WHATWG URL API
+    // Split into different bits
     let hostname = clientReq.headers.host?.split(":")[0];
     let port = 80;
     let path = reqUrl;
@@ -80,6 +80,7 @@ export class ProxyServer {
       if (clientReq.method === "GET") {
         const cached = await this.cache.get(reqUrl);
         if (cached) {
+          // Add in the header
           clientRes.writeHead(200, {
             ...cached.headers,
             "X-Proxy-Cache": "HIT",
@@ -97,8 +98,8 @@ export class ProxyServer {
 
       // Forward Request
       const forwardedHeaders = { ...clientReq.headers };
-      // Hop-by-hop header used by some clients when talking to a proxy.
-      // Do not forward it to origin servers.
+
+      // I saw online that keeping a record of the fact a proxy was used can mess up the response from the server.
       delete (forwardedHeaders as any)["proxy-connection"];
       delete (forwardedHeaders as any)["Proxy-Connection"];
 
@@ -110,12 +111,15 @@ export class ProxyServer {
         headers: forwardedHeaders,
       };
 
+      // Send the request to the server
       const proxyReq = http.request(options, (proxyRes) => {
+        // This function runs when the request comes back.
         const chunks: Buffer[] = [];
 
         // Forward headers adn status
         clientRes.writeHead(proxyRes.statusCode ?? 500, proxyRes.headers);
 
+        // Write to the body as it comes in
         proxyRes.on("data", (chunk) => {
           chunks.push(chunk);
           clientRes.write(chunk);
